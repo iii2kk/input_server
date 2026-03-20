@@ -1,0 +1,16 @@
+:root {
+  --ink: #eef4ff;
+  --muted: #9fb2cc;
+  --sand: #66d9ff;
+  --clay: #7af0c9;
+  --panel: rgba(10, 18, 32, 0.86);
+  --panel-border: rgba(133, 174, 255, 0.18);
+  --danger: #ff7a9c;
+  --warn: #ffd166;
+  --ok: #7af0c9;
+  --shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+  --page-background:
+    radial-gradient(circle at top left, rgba(102, 217, 255, 0.22), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(122, 240, 201, 0.16), transparent 26%),
+    linear-gradient(135deg, #07111f, #0d1b2f);
+}

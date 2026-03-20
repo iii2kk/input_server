@@ -1,0 +1,306 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-width: 420px;
+  min-height: 620px;
+  color: var(--ink, #f5f1e8);
+  font-family: "Avenir Next", "Hiragino Sans", "Noto Sans JP", sans-serif;
+  background: var(--page-background, linear-gradient(160deg, #10231d, #214235 58%, #4e2a20));
+}
+
+body {
+  padding: 14px;
+}
+
+.shell {
+  width: 100%;
+}
+
+.panel {
+  padding: 18px;
+  border-radius: 24px;
+  background: var(--panel, rgba(20, 31, 27, 0.92));
+  border: 1px solid var(--panel-border, rgba(214, 185, 139, 0.18));
+  box-shadow: var(--shadow, 0 20px 50px rgba(0, 0, 0, 0.35));
+  backdrop-filter: blur(12px);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--sand, #d6b98b);
+}
+
+h1 {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.lead {
+  margin: 12px 0 18px;
+  color: var(--muted, #c9c0b0);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.section-title {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted, #c9c0b0);
+}
+
+.settings,
+.status,
+.mode-buttons,
+.quick-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.settings {
+  margin-bottom: 14px;
+}
+
+.settings-panel {
+  overflow: hidden;
+  margin-bottom: 16px;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.settings-row {
+  display: flex;
+  width: 100%;
+  gap: 10px;
+}
+
+.settings-row button {
+  min-width: 76px;
+  white-space: nowrap;
+}
+
+.status {
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.icon-button svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.mode-buttons {
+  margin-bottom: 16px;
+}
+
+.mode-panel,
+.key-panel,
+.clipboard-panel {
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hidden {
+  display: none;
+}
+
+input,
+select,
+textarea,
+button {
+  font: inherit;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid color-mix(in srgb, var(--sand, #d6b98b) 22%, transparent);
+  border-radius: 16px;
+  background: var(--field-background, rgba(8, 15, 13, 0.7));
+  color: var(--field-text, var(--ink, #f5f1e8));
+  padding: 14px 16px;
+  outline: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: color-mix(in srgb, var(--sand, #d6b98b) 70%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--sand, #d6b98b) 12%, transparent);
+  transform: translateY(-1px);
+}
+
+textarea {
+  min-height: 180px;
+  resize: vertical;
+}
+
+.clipboard-box {
+  min-height: 120px;
+}
+
+button {
+  border: 0;
+  border-radius: 999px;
+  padding: 11px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink, #f5f1e8);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--sand, #d6b98b) 18%, transparent), color-mix(in srgb, var(--clay, #a55d3a) 16%, transparent));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sand, #d6b98b) 16%, transparent);
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sand, #d6b98b) 24%, transparent), 0 8px 22px rgba(0, 0, 0, 0.22);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+  transform: none;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sand, #d6b98b) 12%, transparent);
+}
+
+.primary,
+.mode-button.active {
+  background: linear-gradient(135deg, var(--sand, #d6b98b), color-mix(in srgb, var(--sand, #d6b98b) 65%, white));
+  color: #2f180f;
+}
+
+.status-label {
+  color: var(--muted, #c9c0b0);
+  font-size: 13px;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 108px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.status-badge::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+  box-shadow: 0 0 12px rgba(255, 142, 110, 0.55);
+}
+
+.status-badge.connecting::before {
+  background: var(--warn, #ffd27a);
+  box-shadow: 0 0 12px rgba(255, 210, 122, 0.55);
+}
+
+.status-badge.connected::before {
+  background: var(--ok, #8ce0b8);
+  box-shadow: 0 0 12px rgba(140, 224, 184, 0.55);
+}
+
+.status-badge.error::before {
+  background: var(--danger, #ff8e6e);
+  box-shadow: 0 0 12px rgba(255, 142, 110, 0.65);
+}
+
+.icon-button[aria-expanded="true"] {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--sand, #d6b98b) 24%, transparent), color-mix(in srgb, var(--clay, #a55d3a) 22%, transparent));
+}
+
+.quick-keys button {
+  min-width: calc(20% - 8px);
+  padding-inline: 0;
+}
+
+.bulk-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.clipboard-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.action-button {
+  flex: 1;
+}
+
+.theme-select {
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position:
+    calc(100% - 22px) calc(50% - 3px),
+    calc(100% - 16px) calc(50% - 3px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 38px;
+}
+
+.hint,
+.notice {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.hint {
+  color: var(--muted);
+}
+
+.notice {
+  min-height: 18px;
+  margin-top: 14px;
+  color: var(--sand);
+}

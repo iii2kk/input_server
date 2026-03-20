@@ -1,0 +1,18 @@
+:root {
+  --ink: #173221;
+  --muted: #557261;
+  --sand: #b9d27c;
+  --clay: #f0d59a;
+  --panel: rgba(250, 247, 238, 0.92);
+  --panel-border: rgba(93, 130, 104, 0.16);
+  --field-background: rgba(255, 252, 244, 0.96);
+  --field-text: #173221;
+  --danger: #d96b5f;
+  --warn: #e6b85c;
+  --ok: #6ea971;
+  --shadow: 0 20px 50px rgba(44, 63, 38, 0.18);
+  --page-background:
+    radial-gradient(circle at top left, rgba(185, 210, 124, 0.28), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(240, 213, 154, 0.28), transparent 38%),
+    linear-gradient(155deg, #eef5dc, #f7f1e5 60%, #dcead8);
+}

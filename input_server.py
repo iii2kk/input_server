@@ -2,6 +2,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import base64
 import hashlib
 import json
+from pathlib import Path
+import shutil
 import struct
 import urllib.parse
 import subprocess
@@ -28,402 +30,12 @@ SYMBOL_KEYMAP = {
     ")": "parenright"
 }
 
-HTML = """
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Ubuntu Input</title>
+BASE_DIR = Path(__file__).resolve().parent
+EXTENSION_DIR = BASE_DIR / "extension"
 
-<style>
-:root {
-  --bg: #07111f;
-  --bg2: #0d1b2f;
-  --panel: rgba(10, 18, 32, 0.86);
-  --panel-border: rgba(133, 174, 255, 0.18);
-  --text: #eef4ff;
-  --muted: #9fb2cc;
-  --accent: #66d9ff;
-  --accent-strong: #7af0c9;
-  --danger: #ff7a9c;
-  --shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
-}
 
-* { box-sizing: border-box; }
-
-body {
-  margin: 0;
-  min-height: 100vh;
-  color: var(--text);
-  font-family: "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
-  background:
-    radial-gradient(circle at top left, rgba(102, 217, 255, 0.22), transparent 28%),
-    radial-gradient(circle at bottom right, rgba(122, 240, 201, 0.16), transparent 26%),
-    linear-gradient(135deg, var(--bg), var(--bg2));
-}
-
-.shell {
-  max-width: 920px;
-  margin: 0 auto;
-  padding: 48px 20px 72px;
-}
-
-.panel {
-  background: var(--panel);
-  border: 1px solid var(--panel-border);
-  border-radius: 28px;
-  padding: 28px;
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(14px);
-}
-
-.eyebrow {
-  margin: 0 0 10px;
-  color: var(--accent);
-  letter-spacing: 0.22em;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-h2 {
-  margin: 0;
-  font-size: clamp(34px, 6vw, 56px);
-  line-height: 1;
-  letter-spacing: -0.04em;
-}
-
-.lead {
-  margin: 14px 0 26px;
-  max-width: 620px;
-  color: var(--muted);
-  font-size: 15px;
-  line-height: 1.7;
-}
-
-.mode-buttons, .status, .quick-keys {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-}
-
-.mode-buttons { margin-bottom: 16px; }
-.status { margin-bottom: 22px; }
-.hidden { display:none; }
-
-.mode-panel,
-.key-panel {
-  margin-top: 18px;
-  padding: 20px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.section-title {
-  margin: 0 0 12px;
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: var(--muted);
-  text-transform: uppercase;
-}
-
-input, textarea {
-  width: 100%;
-  border: 1px solid rgba(137, 190, 255, 0.18);
-  border-radius: 18px;
-  background: rgba(4, 10, 20, 0.7);
-  color: var(--text);
-  padding: 18px 20px;
-  font-size: 20px;
-  outline: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-}
-
-input:focus, textarea:focus {
-  border-color: rgba(102, 217, 255, 0.75);
-  box-shadow: 0 0 0 4px rgba(102, 217, 255, 0.12);
-  transform: translateY(-1px);
-}
-
-textarea {
-  min-height: 200px;
-  resize: vertical;
-}
-
-button {
-  border: 0;
-  border-radius: 999px;
-  padding: 12px 18px;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text);
-  background: linear-gradient(135deg, rgba(102, 217, 255, 0.24), rgba(122, 240, 201, 0.2));
-  box-shadow: inset 0 0 0 1px rgba(173, 226, 255, 0.16);
-  cursor: pointer;
-  transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
-}
-
-button:hover {
-  transform: translateY(-1px);
-  box-shadow: inset 0 0 0 1px rgba(173, 226, 255, 0.24), 0 10px 24px rgba(0, 0, 0, 0.22);
-}
-
-button:disabled {
-  opacity: 0.45;
-  cursor: default;
-  transform: none;
-  box-shadow: inset 0 0 0 1px rgba(173, 226, 255, 0.12);
-}
-
-.primary {
-  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-  color: #031018;
-}
-
-.status-label {
-  color: var(--muted);
-  font-size: 14px;
-}
-
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 110px;
-  padding: 10px 14px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.status-badge::before {
-  content: "";
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--danger);
-  box-shadow: 0 0 12px rgba(255, 122, 156, 0.6);
-}
-
-.status-badge.connecting::before {
-  background: #ffd166;
-  box-shadow: 0 0 12px rgba(255, 209, 102, 0.6);
-}
-
-.status-badge.connected::before {
-  background: var(--accent-strong);
-  box-shadow: 0 0 12px rgba(122, 240, 201, 0.72);
-}
-
-.status-badge.error::before {
-  background: var(--danger);
-  box-shadow: 0 0 12px rgba(255, 122, 156, 0.72);
-}
-
-.quick-keys button {
-  min-width: 56px;
-  padding: 12px 0;
-}
-
-@media (max-width: 640px) {
-  .shell { padding: 28px 14px 40px; }
-  .panel { padding: 20px; border-radius: 22px; }
-  .mode-buttons, .status { align-items: stretch; }
-  .status-badge { width: 100%; justify-content: center; }
-  button { width: 100%; }
-  .quick-keys button { width: calc(20% - 8px); min-width: 0; }
-}
-</style>
-
-</head>
-<body>
-
-<div class="shell">
-  <div class="panel">
-    <p class="eyebrow">Remote Input Console</p>
-    <h2>Ubuntu Input</h2>
-    <p class="lead">ブラウザから文字列を送り、サーバー側でキーボード入力を再現します。リアルタイム入力とまとめ送信を、接続状態を見ながら切り替えられます。</p>
-
-    <div class="mode-buttons">
-      <button onclick="switchMode('live')">リアルタイム</button>
-      <button onclick="switchMode('bulk')">まとめ送信</button>
-    </div>
-
-    <div class="status">
-      <span class="status-label">接続状態</span>
-      <span id="wsStatus" class="status-badge">未接続</span>
-      <button id="connectButton" class="primary" onclick="connectWebSocket()">接続</button>
-    </div>
-
-    <div id="live-mode" class="mode-panel">
-      <h3 class="section-title">Live Input</h3>
-      <input id="box" autofocus placeholder="type here...">
-    </div>
-
-    <div id="bulk-mode" class="mode-panel hidden">
-      <h3 class="section-title">Bulk Input</h3>
-      <textarea id="bulkBox" placeholder="複数行テキストを入力"></textarea><br>
-      <button class="primary" onclick="sendBulk()">送信</button>
-    </div>
-
-    <div class="key-panel">
-      <h3 class="section-title">Quick Keys</h3>
-      <div class="quick-keys">
-        <button onclick="sendLive('|')">|</button>
-        <button onclick="sendLive('~')">~</button>
-        <button onclick="sendLive('\\\\')">\\</button>
-        <button onclick="sendLive('&')">&</button>
-        <button onclick="sendLive(';')">;</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-
-const box = document.getElementById("box")
-const liveMode = document.getElementById("live-mode")
-const bulkMode = document.getElementById("bulk-mode")
-const bulkBox = document.getElementById("bulkBox")
-const wsStatus = document.getElementById("wsStatus")
-const connectButton = document.getElementById("connectButton")
-let socket = null
-let isComposingText = false
-const controlKeyMap = {
- Enter: "Return",
- Backspace: "BackSpace",
- Delete: "Delete",
- Tab: "Tab",
- Escape: "Escape",
- ArrowLeft: "Left",
- ArrowRight: "Right",
- ArrowUp: "Up",
- ArrowDown: "Down",
- Home: "Home",
- End: "End",
- PageUp: "Page_Up",
- PageDown: "Page_Down"
-}
-
-function connectWebSocket(){
- if(socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)){
-   return
- }
-
- setStatus("接続中", "connecting")
- connectButton.disabled = true
- const protocol = location.protocol === "https:" ? "wss:" : "ws:"
- socket = new WebSocket(protocol + "//" + location.host + "/ws")
- socket.addEventListener("open", function(){
-   setStatus("接続済み", "connected")
-   connectButton.disabled = true
- })
- socket.addEventListener("error", function(){
-   setStatus("接続失敗", "error")
-   connectButton.disabled = false
- })
- socket.addEventListener("close", function(){
-   setStatus("未接続", "")
-   connectButton.disabled = false
- })
-}
-
-function setStatus(text, statusClass){
- wsStatus.textContent = text
- wsStatus.className = "status-badge"
- if(statusClass){
-   wsStatus.classList.add(statusClass)
- }
-}
-
-function sendMessage(message){
- if(socket && socket.readyState === WebSocket.OPEN){
-   socket.send(JSON.stringify(message))
-  }
-}
-
-function sendLive(text){
- sendMessage({type:"text", text:text})
-}
-
-function sendControlKey(key){
- sendMessage({type:"key", key:key})
-}
-
-function switchMode(mode){
- if(mode === "live"){
-   liveMode.classList.remove("hidden")
-   bulkMode.classList.add("hidden")
-   box.focus()
- }else{
-   bulkMode.classList.remove("hidden")
-   liveMode.classList.add("hidden")
-   document.getElementById("bulkBox").focus()
- }
-}
-
-function sendBulk(){
- const text = bulkBox.value
- if(!text) return
- sendMessage({type:"bulk", text:text})
- bulkBox.value = ""
-}
-
-// Enterのような非テキストキーだけkeydownで扱う
-box.addEventListener("keydown",function(e){
- if(e.isComposing) return
-
- const mappedKey = controlKeyMap[e.key]
- if(mappedKey){
-   sendControlKey(mappedKey)
-   e.preventDefault()
- }
-})
-
-// 通常の文字入力は、文字が確定した後のinputイベントで送る
-box.addEventListener("input",function(e){
- if(e.isComposing || isComposingText) return
-
- const text = box.value
- if(!text) return
-
- sendLive(text)
- box.value = ""
-})
-
-box.addEventListener("compositionstart", function(){
- isComposingText = true
-})
-
-box.addEventListener("compositionend", function(e){
- isComposingText = false
-
- const text = e.data || box.value
- if(!text) return
-
- sendLive(text)
- box.value = ""
-})
-
-bulkBox.addEventListener("keydown", function(e){
- if(e.key === "Enter" && e.ctrlKey){
-   e.preventDefault()
-   sendBulk()
- }
-})
-
-connectWebSocket()
-
-</script>
-
-</body>
-</html>
-"""
+def read_text_file(path):
+    return path.read_text(encoding="utf-8")
 
 class Handler(BaseHTTPRequestHandler):
 
@@ -432,11 +44,57 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path == "/ws" and self.headers.get("Upgrade", "").lower() == "websocket":
             self.handle_websocket()
             return
+        if parsed.path == "/clipboard":
+            self.handle_clipboard_request()
+            return
+        if parsed.path == "/popup.css":
+            self.send_static_file(EXTENSION_DIR / "popup.css", "text/css; charset=utf-8")
+            return
+        if parsed.path == "/popup.js":
+            self.send_static_file(EXTENSION_DIR / "popup.js", "application/javascript; charset=utf-8")
+            return
+        if parsed.path.startswith("/themes/"):
+            self.send_static_file(EXTENSION_DIR / parsed.path.lstrip("/"), "text/css; charset=utf-8")
+            return
+
+        self.send_static_file(EXTENSION_DIR / "popup.html", "text/html; charset=utf-8")
+
+    def handle_clipboard_request(self):
+        text, error = get_clipboard_text()
+        if error:
+            self.send_json_response(500, {
+                "ok": False,
+                "error": error
+            })
+            return
+
+        self.send_json_response(200, {
+            "ok": True,
+            "text": text
+        })
+
+    def send_json_response(self, status_code, payload):
+        encoded = json.dumps(payload).encode("utf-8")
+        self.send_response(status_code)
+        self.send_header("Content-type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(encoded)))
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(encoded)
+
+    def send_static_file(self, path, content_type):
+        try:
+            encoded = read_text_file(path).encode("utf-8")
+        except FileNotFoundError:
+            self.send_response(404)
+            self.end_headers()
+            return
 
         self.send_response(200)
-        self.send_header("Content-type","text/html")
+        self.send_header("Content-type", content_type)
+        self.send_header("Content-Length", str(len(encoded)))
         self.end_headers()
-        self.wfile.write(HTML.encode())
+        self.wfile.write(encoded)
 
     def handle_websocket(self):
         key = self.headers.get("Sec-WebSocket-Key")
@@ -591,6 +249,27 @@ def send_multiline_text(text):
                 send_character(char)
         if i < len(lines) - 1:
             send_control_key("Return")
+
+
+def get_clipboard_text():
+    commands = []
+
+    if shutil.which("xclip"):
+        commands.append(["xclip", "-selection", "clipboard", "-o"])
+    if shutil.which("xsel"):
+        commands.append(["xsel", "--clipboard", "--output"])
+    if shutil.which("wl-paste"):
+        commands.append(["wl-paste", "--no-newline"])
+
+    if not commands:
+        return "", "Clipboard command not found. Install xclip, xsel, or wl-paste."
+
+    for command in commands:
+        result = subprocess.run(command, capture_output=True, text=True)
+        if result.returncode == 0:
+            return result.stdout, None
+
+    return "", "Failed to read clipboard."
 
 
 server = ThreadingHTTPServer(("0.0.0.0",5000),Handler)

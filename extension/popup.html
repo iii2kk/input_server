@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Input Server</title>
+  <link rel="stylesheet" href="popup.css">
+  <link id="themeStylesheet" rel="stylesheet" href="themes/canyon-dusk.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="panel">
+      <div class="topbar">
+        <p class="eyebrow" id="platformLabel">Chrome Extension</p>
+        <button id="toggleSettingsButton" class="icon-button" type="button" aria-expanded="false" aria-controls="settingsPanel" aria-label="設定">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 8.7A3.3 3.3 0 1 0 12 15.3A3.3 3.3 0 1 0 12 8.7Z"></path>
+            <path d="M19.4 13.1C19.5 12.8 19.5 12.4 19.5 12C19.5 11.6 19.5 11.2 19.4 10.9L21.3 9.4C21.5 9.2 21.6 8.9 21.4 8.6L19.6 5.4C19.5 5.1 19.2 5 18.9 5.1L16.7 6C16.1 5.5 15.4 5.1 14.6 4.8L14.3 2.5C14.3 2.2 14 2 13.7 2H10.3C10 2 9.7 2.2 9.7 2.5L9.4 4.8C8.6 5.1 7.9 5.5 7.3 6L5.1 5.1C4.8 5 4.5 5.1 4.4 5.4L2.6 8.6C2.4 8.9 2.5 9.2 2.7 9.4L4.6 10.9C4.5 11.2 4.5 11.6 4.5 12C4.5 12.4 4.5 12.8 4.6 13.1L2.7 14.6C2.5 14.8 2.4 15.1 2.6 15.4L4.4 18.6C4.5 18.9 4.8 19 5.1 18.9L7.3 18C7.9 18.5 8.6 18.9 9.4 19.2L9.7 21.5C9.7 21.8 10 22 10.3 22H13.7C14 22 14.3 21.8 14.3 21.5L14.6 19.2C15.4 18.9 16.1 18.5 16.7 18L18.9 18.9C19.2 19 19.5 18.9 19.6 18.6L21.4 15.4C21.6 15.1 21.5 14.8 21.3 14.6L19.4 13.1Z"></path>
+          </svg>
+        </button>
+      </div>
+      <h1>Input Server</h1>
+      <p class="lead">保存したサーバーへ WebSocket 接続し、リアルタイム入力とまとめ送信を切り替えて使えます。</p>
+
+      <div class="status">
+        <span class="status-label">接続状態</span>
+        <span id="wsStatus" class="status-badge">未接続</span>
+      </div>
+
+      <section id="settingsPanel" class="settings-panel hidden">
+        <form id="settingsForm" class="settings">
+          <label class="section-title" for="serverUrl">Server URL</label>
+          <div class="settings-row">
+            <input id="serverUrl" name="serverUrl" type="text" placeholder="ws://127.0.0.1:5000/ws">
+            <button id="saveButton" type="submit">保存</button>
+          </div>
+          <p class="hint">`http://127.0.0.1:5000` のようなURLでも保存できます。</p>
+          <label class="section-title" for="themeSelect">Theme</label>
+          <select id="themeSelect" name="themeSelect" class="theme-select">
+            <option value="canyon-dusk">Canyon Dusk</option>
+            <option value="http-legacy">HTTP Legacy</option>
+            <option value="matcha-paper">Matcha Paper</option>
+            <option value="solar-flare">Solar Flare</option>
+            <option value="moon-slate">Moon Slate</option>
+          </select>
+        </form>
+      </section>
+
+      <div class="mode-buttons">
+        <button id="liveModeButton" type="button" class="mode-button active">リアルタイム</button>
+        <button id="bulkModeButton" type="button" class="mode-button">まとめ送信</button>
+        <button id="clipboardModeButton" type="button" class="mode-button">クリップボード</button>
+      </div>
+
+      <section id="liveMode" class="mode-panel">
+        <h2 class="section-title">Live Input</h2>
+        <input id="liveBox" type="text" autocomplete="off" placeholder="type here...">
+      </section>
+
+      <section id="bulkMode" class="mode-panel hidden">
+        <h2 class="section-title">Bulk Input</h2>
+        <textarea id="bulkBox" placeholder="複数行テキストを入力"></textarea>
+        <div class="bulk-actions">
+          <button id="bulkSendButton" class="primary action-button" type="button">送信</button>
+          <button id="bulkBackspaceButton" class="action-button" type="button">Backspace</button>
+        </div>
+        <p class="hint">`Ctrl+Enter` で送信、`Ctrl+Shift+Backspace` で Backspace を送れます。</p>
+      </section>
+
+      <section id="keyPanel" class="key-panel">
+        <h2 class="section-title">Quick Keys</h2>
+        <div class="quick-keys">
+          <button type="button" data-quick-key="|">|</button>
+          <button type="button" data-quick-key="~">~</button>
+          <button type="button" data-quick-key="\\">\</button>
+          <button type="button" data-quick-key="&">&</button>
+          <button type="button" data-quick-key=";">;</button>
+        </div>
+      </section>
+
+      <section id="clipboardMode" class="clipboard-panel hidden">
+        <h2 class="section-title">Server Clipboard</h2>
+        <textarea id="clipboardBox" class="clipboard-box" readonly placeholder="サーバー側PCのクリップボードを表示"></textarea>
+        <div class="clipboard-actions">
+          <button id="refreshClipboardButton" class="action-button" type="button">取得</button>
+          <button id="copyClipboardButton" class="primary action-button" type="button">コピー</button>
+        </div>
+      </section>
+
+      <p id="notice" class="notice" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <script src="popup.js"></script>
+</body>
+</html>
