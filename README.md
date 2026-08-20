@@ -1,6 +1,6 @@
 # input_server
 
-ブラウザまたは Chrome 拡張から送った文字列を、サーバー側で `xdotool` を使ってキーボード入力として再現するシンプルな入力サーバーです。
+ブラウザまたは Chrome 拡張から送った文字列を、サーバー側で `xdotool` または `ydotool` を使ってキーボード入力として再現するシンプルな入力サーバーです。
 
 ## 目的
 
@@ -38,8 +38,8 @@
 ## 必要なもの
 
 - Python 3
-- `xdotool`
-- X11 環境
+- X11 環境の場合は `xdotool`
+- Wayland 環境の場合は `ydotool` と、起動済みの `ydotoold`
 
 クリップボード取得機能を使う場合は、以下のいずれかも必要です。
 
@@ -47,7 +47,9 @@
 - `xsel`
 - `wl-paste`
 
-`xdotool` はアクティブなウィンドウに対して入力を送るため、入力先ウィンドウがフォーカスされている必要があります。
+どちらのツールでも、入力先ウィンドウがフォーカスされている必要があります。
+
+`ydotool` は Linux の `/dev/uinput` を使います。ディストリビューションの手順に従って `ydotoold` を起動し、サーバーを実行するユーザーがそのソケットへアクセスできるようにしてください。ソケットの場所を変更している場合は、サーバー起動時にも `YDOTOOL_SOCKET` を設定します。
 
 ## 使い方
 
@@ -55,6 +57,28 @@
 
 ```bash
 python3 input_server.py
+```
+
+入力ツールは実行環境から自動判定されます。明示的に選ぶ場合は `INPUT_BACKEND` を指定します。
+
+Wayland で `ydotool` を使う場合:
+
+```bash
+INPUT_BACKEND=ydotool python3 input_server.py
+```
+
+X11 で従来の `xdotool` を使う場合:
+
+```bash
+INPUT_BACKEND=xdotool python3 input_server.py
+```
+
+`INPUT_BACKEND=auto`（既定値）は、`XDG_SESSION_TYPE` と `WAYLAND_DISPLAY` / `DISPLAY` を確認して選択します。セッション情報がない場合は、従来互換のため `xdotool` を優先します。
+
+`ydotool` で使うキーボード配列は `YDOTOOL_KEYBOARD_LAYOUT=auto|jp|us` で選択できます。既定の `auto` は `XKB_DEFAULT_LAYOUT`、次に `/etc/default/keyboard` を確認します。日本語JIS配列を明示する場合は次のように起動します。
+
+```bash
+YDOTOOL_KEYBOARD_LAYOUT=jp python3 input_server.py
 ```
 
 起動すると、以下のURLで待ち受けます。
@@ -149,8 +173,10 @@ legacy/http_legacy_theme.css
 
 ## 注意点
 
-- 入力先は `xdotool` が送れるアクティブウィンドウです
-- Wayland 環境では `xdotool` が期待通り動かないことがあります
+- 入力先は選択した入力ツールが送信できるアクティブウィンドウです
+- Wayland では `ydotoold` が動作し、`ydotool` からソケットへ接続できる必要があります
 - 記号や IME 周りは環境差の影響を受けることがあります
 - リアルタイム入力では、入力したキーと違うキーが入力される場合があります
-- 文字入力の正確さを最優先する場合、`xdotool` には限界があります
+- `ydotool` では US 配列と日本語JIS配列に対応しています。それ以外の配列は `us` として扱われるため、一部の記号が一致しない場合があります
+- `ydotool type` は ASCII 入力向けです。安全のため、日本語などの非 ASCII 文字は `ydotool` 選択時には送信せず、サーバーの標準出力へ表示します（`xdotool` 選択時の従来処理には影響しません）
+- 文字入力の正確さを最優先する場合、`xdotool` と `ydotool` のどちらにも限界があります

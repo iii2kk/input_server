@@ -2,12 +2,13 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import base64
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import struct
+import subprocess
 import time
 import urllib.parse
-import subprocess
 
 SYMBOL_KEYMAP = {
     "_": "underscore",
@@ -31,9 +32,131 @@ SYMBOL_KEYMAP = {
     ")": "parenright"
 }
 
+YDOTOOL_KEYMAP = {
+    "Escape": 1,
+    "BackSpace": 14,
+    "Tab": 15,
+    "Return": 28,
+    "Home": 102,
+    "Up": 103,
+    "Page_Up": 104,
+    "Left": 105,
+    "Right": 106,
+    "End": 107,
+    "Down": 108,
+    "Page_Down": 109,
+    "Delete": 111,
+}
+
+YDOTOOL_JP_SYMBOL_KEYMAP = {
+    "!": (2, True),
+    "\"": (3, True),
+    "#": (4, True),
+    "$": (5, True),
+    "%": (6, True),
+    "&": (7, True),
+    "'": (8, True),
+    "(": (9, True),
+    ")": (10, True),
+    "*": (40, True),
+    "+": (39, True),
+    ",": (51, False),
+    "-": (12, False),
+    ".": (52, False),
+    "/": (53, False),
+    ":": (40, False),
+    ";": (39, False),
+    "<": (51, True),
+    "=": (12, True),
+    ">": (52, True),
+    "?": (53, True),
+    "@": (26, False),
+    "[": (27, False),
+    "\\": (89, False),
+    "]": (43, False),
+    "^": (13, False),
+    "_": (89, True),
+    "`": (26, True),
+    "{": (27, True),
+    "|": (124, True),
+    "}": (43, True),
+    "~": (13, True),
+}
+
+SUPPORTED_INPUT_BACKENDS = {"auto", "xdotool", "ydotool"}
+SUPPORTED_YDOTOOL_KEYBOARD_LAYOUTS = {"auto", "jp", "us"}
+
 BASE_DIR = Path(__file__).resolve().parent
 EXTENSION_DIR = BASE_DIR / "extension"
 SYMBOL_KEY_WAIT_SEC = 0.2
+
+
+def detect_input_backend(environ=None, find_command=shutil.which):
+    environ = os.environ if environ is None else environ
+    requested = environ.get("INPUT_BACKEND", "auto").strip().lower()
+
+    if requested not in SUPPORTED_INPUT_BACKENDS:
+        supported = ", ".join(sorted(SUPPORTED_INPUT_BACKENDS))
+        raise ValueError(
+            f"Unsupported INPUT_BACKEND: {requested!r}. Choose one of: {supported}."
+        )
+
+    if requested != "auto":
+        return requested
+
+    session_type = environ.get("XDG_SESSION_TYPE", "").strip().lower()
+    if session_type == "wayland" or environ.get("WAYLAND_DISPLAY"):
+        return "ydotool"
+    if session_type == "x11" or environ.get("DISPLAY"):
+        return "xdotool"
+
+    if find_command("xdotool"):
+        return "xdotool"
+    if find_command("ydotool"):
+        return "ydotool"
+
+    # Keep the original behavior when no session or executable can be detected.
+    return "xdotool"
+
+
+INPUT_BACKEND = detect_input_backend()
+
+
+def detect_ydotool_keyboard_layout(
+    environ=None,
+    keyboard_config_path=Path("/etc/default/keyboard"),
+):
+    environ = os.environ if environ is None else environ
+    requested = environ.get("YDOTOOL_KEYBOARD_LAYOUT", "auto").strip().lower()
+
+    if requested not in SUPPORTED_YDOTOOL_KEYBOARD_LAYOUTS:
+        supported = ", ".join(sorted(SUPPORTED_YDOTOOL_KEYBOARD_LAYOUTS))
+        raise ValueError(
+            "Unsupported YDOTOOL_KEYBOARD_LAYOUT: "
+            f"{requested!r}. Choose one of: {supported}."
+        )
+
+    if requested != "auto":
+        return requested
+
+    configured_layout = environ.get("XKB_DEFAULT_LAYOUT", "").strip().lower()
+    if not configured_layout:
+        try:
+            keyboard_config = keyboard_config_path.read_text(encoding="utf-8")
+        except (FileNotFoundError, PermissionError, OSError):
+            keyboard_config = ""
+
+        for line in keyboard_config.splitlines():
+            name, separator, value = line.partition("=")
+            if separator and name.strip() == "XKBLAYOUT":
+                configured_layout = value.strip().strip("\"'").lower()
+                break
+
+    layouts = {layout.strip() for layout in configured_layout.split(",")}
+    return "jp" if "jp" in layouts else "us"
+
+
+YDOTOOL_KEYBOARD_LAYOUT = detect_ydotool_keyboard_layout()
 
 
 def read_text_file(path):
@@ -229,11 +352,55 @@ def send_text(text):
 
 
 def send_control_key(key):
-    if key:
+    if not key:
+        return
+
+    if INPUT_BACKEND == "xdotool":
         subprocess.run(["xdotool", "key", "--clearmodifiers", key])
+        return
+
+    keycode = YDOTOOL_KEYMAP.get(key)
+    if keycode is None:
+        print(f"Unsupported ydotool control key: {key}")
+        return
+
+    send_ydotool_keycode(keycode)
+
+
+def send_ydotool_keycode(keycode, shift=False):
+    key_events = []
+    if shift:
+        key_events.append("42:1")
+
+    key_events.extend((f"{keycode}:1", f"{keycode}:0"))
+
+    if shift:
+        key_events.append("42:0")
+
+    subprocess.run(["ydotool", "key", *key_events])
 
 
 def send_character(char):
+    if INPUT_BACKEND == "ydotool":
+        if not char.isascii():
+            print(f"ydotool cannot type non-ASCII character: {char!r}")
+            return
+
+        if YDOTOOL_KEYBOARD_LAYOUT == "jp":
+            mapped_key = YDOTOOL_JP_SYMBOL_KEYMAP.get(char)
+            if mapped_key:
+                send_ydotool_keycode(*mapped_key)
+                return
+
+        # stdin avoids ydotool's command-line escape handling for characters
+        # such as backslashes and leading hyphens.
+        subprocess.run(
+            ["ydotool", "type", "--file=-"],
+            input=char,
+            text=True,
+        )
+        return
+
     mapped_key = SYMBOL_KEYMAP.get(char)
     if mapped_key:
         # time.sleep(SYMBOL_KEY_WAIT_SEC)
@@ -278,8 +445,22 @@ def get_clipboard_text():
     return "", "Failed to read clipboard."
 
 
-server = ThreadingHTTPServer(("0.0.0.0",5000),Handler)
+def main():
+    if not shutil.which(INPUT_BACKEND):
+        raise SystemExit(
+            f"Input command not found: {INPUT_BACKEND}. "
+            "Install it or select another command with INPUT_BACKEND."
+        )
 
-print("server start : http://localhost:5000")
+    server = ThreadingHTTPServer(("0.0.0.0", 5000), Handler)
 
-server.serve_forever()
+    print(f"input backend : {INPUT_BACKEND}")
+    if INPUT_BACKEND == "ydotool":
+        print(f"ydotool keyboard layout : {YDOTOOL_KEYBOARD_LAYOUT}")
+    print("server start : http://localhost:5000")
+
+    server.serve_forever()
+
+
+if __name__ == "__main__":
+    main()
