@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import shutil
 import struct
+import time
 import urllib.parse
 import subprocess
 
@@ -32,6 +33,7 @@ SYMBOL_KEYMAP = {
 
 BASE_DIR = Path(__file__).resolve().parent
 EXTENSION_DIR = BASE_DIR / "extension"
+SYMBOL_KEY_WAIT_SEC = 0.2
 
 
 def read_text_file(path):
@@ -234,7 +236,11 @@ def send_control_key(key):
 def send_character(char):
     mapped_key = SYMBOL_KEYMAP.get(char)
     if mapped_key:
-        subprocess.run(["xdotool", "key", "--clearmodifiers", mapped_key])
+        # time.sleep(SYMBOL_KEY_WAIT_SEC)
+        subprocess.run(["xdotool", "key", "--clearmodifiers", "Shift_L"])
+        time.sleep(SYMBOL_KEY_WAIT_SEC) 
+        subprocess.run(["xdotool", "key", mapped_key])
+        # time.sleep(SYMBOL_KEY_WAIT_SEC)
     else:
         subprocess.run(["xdotool", "type", "--clearmodifiers", char])
 
